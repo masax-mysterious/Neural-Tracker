@@ -1,0 +1,900 @@
+<!DOCTYPE html>
+<html lang="en" class="bg-[#00060a]">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Holistic Neural Link v4.0</title>
+  <script src="https://unpkg.com/@tailwindcss/browser@4"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  
+  <style type="text/tailwindcss">
+    @theme {
+      --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+      --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+      --font-display: "Space Grotesk", sans-serif;
+      --color-brand-cyan: #7cf7ff;
+      --color-brand-green: #00ff88;
+      --color-brand-pink: #ff00ff;
+    }
+
+    body {
+      margin: 0;
+      overflow: hidden;
+      background: #00060a;
+      color: #7cf7ff;
+      font-family: var(--font-sans);
+      user-select: none;
+    }
+
+    .neural-grid {
+      background-image: 
+        linear-gradient(rgba(124,247,255,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(124,247,255,0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+    }
+
+    .vignette {
+      background: radial-gradient(circle at center, transparent 0%, rgba(0,6,10,0.95) 100%);
+    }
+
+    .pulse-subtle {
+      animation: pulse-subtle 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+
+    @keyframes pulse-subtle {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.05); opacity: 0.8; }
+    }
+  </style>
+</head>
+<body>
+  <video id="video-feed" autoplay playsinline muted style="display:none"></video>
+  <div id="scene-container" class="absolute inset-0 z-0"></div>
+  <div class="absolute inset-0 pointer-events-none z-10 neural-grid"></div>
+  <div class="absolute inset-0 pointer-events-none z-10 vignette"></div>
+
+  <!-- UI Header -->
+  <header class="absolute top-0 left-0 w-full p-8 flex justify-between items-start z-20 pointer-events-none">
+    <div class="flex flex-col gap-1">
+      <div class="flex items-center gap-3">
+        <div class="p-2 bg-brand-cyan/10 border border-brand-cyan/30 rounded-lg">
+          <i data-lucide="scan-eye" class="w-6 h-6 text-brand-cyan"></i>
+        </div>
+        <div>
+          <h1 class="text-2xl font-display font-bold tracking-tight text-brand-cyan uppercase">
+            Holistic <span class="text-white">Neural Link v5.x</span>
+          </h1>
+          <p class="font-mono text-[10px] text-brand-cyan/60 tracking-[0.2em] uppercase">
+            High-Density Volumetric Aura Tracking
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div class="flex flex-col items-end gap-2 text-right">
+      <div class="flex items-center gap-2 px-3 py-1 bg-black/40 border border-white/5 rounded-full backdrop-blur-md">
+        <span class="text-[10px] font-mono text-white/40 uppercase tracking-widest">Neural Load</span>
+        <div class="flex gap-0.5" id="load-bars">
+          <div class="w-1 h-3 rounded-full bg-brand-cyan shadow-[0_0_8px_#7cf7ff]"></div>
+          <div class="w-1 h-3 rounded-full bg-brand-cyan shadow-[0_0_8px_#7cf7ff]"></div>
+          <div class="w-1 h-3 rounded-full bg-brand-cyan shadow-[0_0_8px_#7cf7ff]"></div>
+          <div class="w-1 h-3 rounded-full bg-white/10"></div>
+        </div>
+      </div>
+      <p class="text-[10px] font-mono text-brand-cyan/40" id="sync-status">AWAITING CONNECTION</p>
+    </div>
+  </header>
+
+  <!-- Side Stats -->
+  <aside class="absolute left-8 top-1/2 -translate-y-1/2 flex flex-col gap-6 z-20 pointer-events-none">
+    <div class="flex items-center gap-4">
+      <div class="w-10 h-10 flex items-center justify-center bg-black/40 border border-white/10 rounded-xl backdrop-blur-md">
+        <i data-lucide="fingerprint" class="w-5 h-5 text-brand-cyan/60"></i>
+      </div>
+      <div class="flex flex-col">
+        <span class="text-[9px] font-mono text-white/30 uppercase tracking-widest">Identity</span>
+        <span class="text-xs font-mono text-white/80 uppercase" id="id-val">UNRESOLVED</span>
+      </div>
+    </div>
+    <div class="flex items-center gap-4">
+      <div class="w-10 h-10 flex items-center justify-center bg-black/40 border border-white/10 rounded-xl backdrop-blur-md">
+        <i data-lucide="brain-circuit" class="w-5 h-5 text-brand-cyan/60"></i>
+      </div>
+      <div class="flex flex-col">
+        <span class="text-[9px] font-mono text-white/30 uppercase tracking-widest">Neural Affect</span>
+        <span class="text-xs font-mono text-brand-cyan shrink-0" id="emotion-val">CALIBRATING...</span>
+        <div class="w-20 h-0.5 bg-white/5 rounded-full mt-1 overflow-hidden">
+          <div id="emotion-confidence" class="h-full bg-brand-cyan w-0 transition-all"></div>
+        </div>
+      </div>
+    </div>
+    <div class="flex items-center gap-4">
+      <div class="w-10 h-10 flex items-center justify-center bg-black/40 border border-white/10 rounded-xl backdrop-blur-md">
+        <i data-lucide="zap" class="w-5 h-5 text-brand-pink/60"></i>
+      </div>
+      <div class="flex flex-col">
+        <span class="text-[9px] font-mono text-white/30 uppercase tracking-widest">Neural Adaptation</span>
+        <span class="text-xs font-mono text-brand-pink" id="learn-val">0.0%</span>
+        <div class="w-20 h-0.5 bg-white/5 rounded-full mt-1 overflow-hidden">
+          <div id="learn-bar-ui" class="h-full bg-brand-pink w-0 transition-all duration-500"></div>
+        </div>
+      </div>
+    </div>
+    <div class="flex items-center gap-4">
+      <div class="w-10 h-10 flex items-center justify-center bg-black/40 border border-white/10 rounded-xl backdrop-blur-md">
+        <i data-lucide="layers" class="w-5 h-5 text-brand-cyan/60"></i>
+      </div>
+      <div class="flex flex-col">
+        <span class="text-[9px] font-mono text-white/30 uppercase tracking-widest">Mesh Density</span>
+        <span class="text-xs font-mono text-white/80" id="pts-val">0 PTS</span>
+        <div class="w-20 h-0.5 bg-white/5 rounded-full mt-1 overflow-hidden">
+          <div id="mesh-density-bar" class="h-full bg-brand-cyan w-0 transition-all duration-300"></div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Initialization Overlay -->
+  <div class="absolute inset-0 flex items-center justify-center z-20 pointer-events-none" id="init-overlay">
+    <div class="flex flex-col items-center gap-6 pointer-events-auto">
+      <div class="relative">
+        <div class="absolute inset-0 bg-brand-cyan/20 blur-3xl rounded-full"></div>
+        <button id="btn-start" class="relative group p-1 rounded-full bg-brand-cyan/10 border border-brand-cyan/30 hover:border-brand-cyan transition-all">
+          <div id="btn-start-inner" class="flex items-center justify-center w-28 h-28 rounded-full bg-brand-cyan/20 text-brand-cyan group-hover:bg-brand-cyan group-hover:text-black transition-all">
+            <i data-lucide="radio" class="w-12 h-12"></i>
+          </div>
+        </button>
+      </div>
+      <div class="text-center">
+        <h2 class="text-xl font-display font-medium text-white mb-1 uppercase tracking-tight">Sync Body Parts</h2>
+        <p class="text-sm text-brand-cyan/60 font-mono italic">Calibrate Eyes, Ears, Nose & Limbs</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Real-time Status -->
+  <div class="absolute top-1/2 left-1/2 -translate-x-1/2 translate-y-48 z-20 pointer-events-none text-center">
+    <p class="text-brand-cyan font-display text-sm tracking-[0.4em] uppercase opacity-50" id="main-status">Initializing Neural Interface</p>
+  </div>
+
+  <!-- Bottom Telemetry -->
+  <footer class="absolute bottom-0 left-0 w-full p-8 flex justify-between items-end z-20 pointer-events-none">
+    <div class="flex flex-col gap-4 w-64">
+      <div class="p-4 bg-black/40 border border-white/5 rounded-2xl backdrop-blur-md">
+        <h3 class="text-[10px] font-mono text-brand-cyan/60 uppercase tracking-widest mb-3">Holistic Telemetry</h3>
+        <div class="space-y-3">
+          <div>
+            <div class="flex justify-between text-[9px] font-mono text-white/40 mb-1">
+              <span>SKELETAL INTEGRITY</span>
+              <span id="pose-sync">0%</span>
+            </div>
+            <div class="h-0.5 bg-white/5 rounded-full overflow-hidden">
+               <div id="pose-bar" class="h-full bg-brand-pink transition-all duration-300 w-0"></div>
+            </div>
+          </div>
+          <div>
+            <div class="flex justify-between text-[9px] font-mono text-white/40 mb-1">
+              <span>FACIAL MAPPING</span>
+              <span id="face-sync">0%</span>
+            </div>
+            <div class="h-0.5 bg-white/5 rounded-full overflow-hidden">
+               <div id="face-bar" class="h-full bg-brand-cyan transition-all duration-300 w-0"></div>
+            </div>
+          </div>
+          <div>
+            <div class="flex justify-between text-[9px] font-mono text-white/40 mb-1">
+              <span>HAND RECONSTRUCTION</span>
+              <span id="hand-sync">0%</span>
+            </div>
+            <div class="h-0.5 bg-white/5 rounded-full overflow-hidden">
+               <div id="hand-bar" class="h-full bg-brand-green transition-all duration-300 w-0"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="p-4 bg-black/40 border border-white/5 rounded-2xl backdrop-blur-md">
+        <h3 class="text-[10px] font-mono text-brand-cyan/60 uppercase tracking-widest mb-3">Neural Affect Trend</h3>
+        <canvas id="emotion-trend" class="w-full h-12 mb-4 opacity-70"></canvas>
+        <h3 class="text-[10px] font-mono text-brand-cyan/60 uppercase tracking-widest mb-3">Neural Affect Log</h3>
+        <div id="emotion-log" class="h-24 overflow-hidden flex flex-col gap-2 mask-linear-fade">
+           <div class="text-[9px] font-mono text-white/20 uppercase italic">Awaiting neural patterns...</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-8">
+      <button id="btn-stop" class="hidden px-8 py-2.5 bg-brand-cyan/10 border border-brand-cyan/40 text-brand-cyan text-[10px] font-mono uppercase tracking-[0.2em] rounded-full pointer-events-auto hover:bg-brand-cyan hover:text-black transition-all">
+        Terminate Connection
+      </button>
+      <div class="flex flex-col items-end">
+         <span class="text-[9px] font-mono text-white/20 uppercase tracking-[0.4em]">Uptime</span>
+         <span class="text-2xl font-display font-light text-white/90 tabular-nums" id="runtime">00:00:00</span>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Mini Preview -->
+  <div class="fixed bottom-4 right-4 w-56 h-40 bg-black/60 rounded-xl overflow-hidden border border-brand-cyan/20 z-50 shadow-2xl hidden" id="mini-preview">
+    <canvas id="preview-canvas" class="w-full h-full object-cover opacity-50"></canvas>
+    <div class="absolute bottom-2 left-2 flex items-center gap-1.5 backdrop-blur-sm bg-black/40 px-2 py-0.5 rounded-full border border-white/5">
+      <div class="w-1.5 h-1.5 rounded-full bg-brand-green animate-pulse"></div>
+      <span class="text-[8px] font-mono uppercase tracking-widest text-white/50">SECURE FEED</span>
+    </div>
+  </div>
+
+  <!-- Body Content for Depth -->
+  <div class="absolute inset-0 pointer-events-none z-0 overflow-hidden">
+    <div class="absolute -top-[10%] -left-[10%] w-[120%] h-[120%] bg-[radial-gradient(circle_at_50%_50%,rgba(124,247,255,0.02)_0%,transparent_50%)]"></div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/holistic/holistic.js" crossorigin="anonymous"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/three.min.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/lucide@0.344.0/dist/umd/lucide.min.js" crossorigin="anonymous"></script>
+
+  <script>
+    // System Config
+    const PARTS_COUNT = 468 + 33 + 21 + 21; 
+    const AURA_PER_POINT = 12; // 12x density per landmark
+    const TOTAL_PARTICLES = PARTS_COUNT * AURA_PER_POINT;
+    const NOISE_COUNT = 25000; // Increased background density
+    const PATTERN_COUNT = 6000; // Hundreds of green patterns
+
+    const video = document.getElementById('video-feed');
+    const previewCanvas = document.getElementById('preview-canvas');
+    const previewCtx = previewCanvas.getContext('2d');
+    const btnStart = document.getElementById('btn-start');
+    const btnStop = document.getElementById('btn-stop');
+    const overlay = document.getElementById('init-overlay');
+    const mainStatus = document.getElementById('main-status');
+    const ptsVal = document.getElementById('pts-val');
+    
+    let holistic;
+    let scene, camera, renderer, cloud, neuralNoise, skeletonLines, neuralFibers, bioPatterns;
+    let highlights = {
+      leftEye: null, rightEye: null, nose: null,
+      leftEar: null, rightEar: null,
+      heart: null, abdomen: null,
+      leftElbow: null, rightElbow: null,
+      leftKnee: null, rightKnee: null,
+      leftIndex: null, rightIndex: null,
+      leftThumb: null, rightThumb: null
+    };
+
+    const POSE_CONNECTIONS = [
+      [11, 12], [12, 24], [24, 23], [23, 11], // Torso Box
+      [11, 13], [13, 15], [15, 17], [15, 19], [15, 21], [17, 19], // Left Arm + Hand Volume
+      [12, 14], [14, 16], [16, 18], [16, 20], [16, 22], [18, 20], // Right Arm
+      [23, 25], [25, 27], [27, 29], [29, 31], [31, 27], // Left Leg
+      [24, 26], [26, 28], [28, 30], [30, 32], [32, 28], // Right Leg
+      [11, 14], [12, 13], // Chest cross-reinforcement
+      [23, 26], [24, 25], // Hip cross-reinforcement
+      [11, 8], [12, 7], // Shoulders to ears (Pose landmarks 7,8 are ears)
+    ];
+
+    const HAND_CONNECTIONS = [
+      [0,1], [1,2], [2,3], [3,4],
+      [0,5], [5,6], [6,7], [7,8],
+      [5,9], [9,10], [10,11], [11,12],
+      [9,13], [13,14], [14,15], [15,16],
+      [13,17], [17,18], [18,19], [19,20],
+      [0,17], [5,9], [9,13], [13,17], [0,9], [0,13], // Palm webbing and fan
+      [0,2], [2,5], [5,9], [9,13], [13,17], [17,0], // Circular palm outer contour
+      [1,5], [5,9], [9,13], [13,17], // Base knuckle connections
+      [2,6], [6,10], [10,14], [14,18], // Mid finger connections
+      [3,7], [7,11], [11,15], [15,19] // Top finger connections
+    ];
+
+    let isActive = false;
+    let stream;
+    let startTime;
+    let learningProgress = 0;
+    let adaptationFactor = 0.3; 
+    let emotionHistory = [];
+    const MAX_LOG = 5;
+
+    // Neural Weights (Continuous Learning Baselines)
+    let neuralWeights = {
+      mouthWidthBase: 0.45,
+      mouthHeightBase: 0.05,
+      eyeOpenBase: 0.02,
+      browDistBase: 0.08,
+      samples: 0
+    };
+
+    const EMOTION_MAP = {
+      NEUTRAL: { color: 0x7cf7ff, label: "CALIBRATED", val: 0.5 },
+      JOY: { color: 0x00ff88, label: "POSITIVE AFFECT", val: 1.0 },
+      SURPRISE: { color: 0xffffff, label: "STIMULUS PEAK", val: 0.8 },
+      FOCUS: { color: 0x7cafff, label: "COGNITIVE FOCUS", val: 0.6 },
+      SAD: { color: 0x4a5eff, label: "DISTRESS DETECTED", val: 0.2 }
+    };
+
+    function detectEmotion(landmarks) {
+      if (!landmarks) return { type: 'NEUTRAL', confidence: 0 };
+
+      const mouthWidth = Math.abs(landmarks[61].x - landmarks[291].x);
+      const mouthHeight = Math.abs(landmarks[13].y - landmarks[14].y);
+      const eyeOpenLeft = Math.abs(landmarks[159].y - landmarks[145].y);
+      const eyeOpenRight = Math.abs(landmarks[386].y - landmarks[374].y);
+      const browLeft = landmarks[70].y - landmarks[159].y;
+      const browRight = landmarks[300].y - landmarks[386].y;
+      const faceHeight = Math.abs(landmarks[10].y - landmarks[152].y);
+      
+      const nmw = mouthWidth / faceHeight;
+      const nmh = mouthHeight / faceHeight;
+      const neo = (eyeOpenLeft + eyeOpenRight) / (2 * faceHeight);
+      const nbr = (browLeft + browRight) / (2 * faceHeight);
+
+      // INCREMENTAL LEARNING (Equivalent to partial_fit)
+      // When face is relatively stable, we update our "Neutral" weights
+      const isFeatureStable = Math.abs(nmw - neuralWeights.mouthWidthBase) < 0.05;
+      if (isFeatureStable && nmh < 0.1) {
+        const learnRate = 0.01; // Alpha for SGD-like update
+        neuralWeights.mouthWidthBase += (nmw - neuralWeights.mouthWidthBase) * learnRate;
+        neuralWeights.mouthHeightBase += (nmh - neuralWeights.mouthHeightBase) * learnRate;
+        neuralWeights.eyeOpenBase += (neo - neuralWeights.eyeOpenBase) * learnRate;
+        neuralWeights.browDistBase += (nbr - neuralWeights.browDistBase) * learnRate;
+        neuralWeights.samples++;
+      }
+
+      // Prediction phase relative to learned weights
+      if (nmh > neuralWeights.mouthHeightBase * 3) return { type: 'SURPRISE', confidence: Math.min(100, (nmh / (neuralWeights.mouthHeightBase * 5)) * 100) };
+      if (nmw > neuralWeights.mouthWidthBase * 1.15) return { type: 'JOY', confidence: Math.min(100, (nmw / (neuralWeights.mouthWidthBase * 1.3)) * 100) };
+      if (nbr < neuralWeights.browDistBase * 0.7) return { type: 'SAD', confidence: 85 };
+      if (neo < neuralWeights.eyeOpenBase * 0.6) return { type: 'FOCUS', confidence: 95 };
+      
+      return { type: 'NEUTRAL', confidence: 100 };
+    }
+
+    function init() {
+      if (typeof THREE === 'undefined' || typeof lucide === 'undefined' || typeof Holistic === 'undefined') {
+        setTimeout(init, 50);
+        return;
+      }
+      lucide.createIcons();
+      init3D();
+      setupHolistic();
+      animate();
+      updateTelemetry();
+
+      previewCanvas.width = 300;
+      previewCanvas.height = 200;
+    }
+
+    function createHighlightMesh(color) {
+      const group = new THREE.Group();
+      
+      // Inner glowing sphere
+      const sphereGeo = new THREE.SphereGeometry(0.06, 16, 16);
+      const sphereMat = new THREE.MeshBasicMaterial({ color: color, transparent: true, opacity: 0.8 });
+      const sphere = new THREE.Mesh(sphereGeo, sphereMat);
+      group.add(sphere);
+
+      // Outer ring
+      const ringGeo = new THREE.RingGeometry(0.12, 0.14, 32);
+      const ringMat = new THREE.MeshBasicMaterial({ color: color, side: THREE.DoubleSide, transparent: true, opacity: 0.4 });
+      const ring = new THREE.Mesh(ringGeo, ringMat);
+      group.add(ring);
+
+      group.visible = false;
+      return group;
+    }
+
+    function init3D() {
+      const container = document.getElementById('scene-container');
+      scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x00060a);
+      scene.fog = new THREE.FogExp2(0x00060a, 0.12);
+
+      camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 1000);
+      camera.position.z = 6;
+
+      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      container.appendChild(renderer.domElement);
+
+      // Biometric Cloud (Tracked Points)
+      const cloudGeo = new THREE.BufferGeometry();
+      const cloudPos = new Float32Array(TOTAL_PARTICLES * 3);
+      for(let i=0; i<cloudPos.length; i++) cloudPos[i] = (Math.random()-0.5)*5;
+      cloudGeo.setAttribute('position', new THREE.BufferAttribute(cloudPos, 3));
+      
+      const cloudMat = new THREE.PointsMaterial({
+        color: 0x7cf7ff,
+        size: 0.02,
+        transparent: true,
+        opacity: 0.6,
+        blending: THREE.AdditiveBlending,
+        sizeAttenuation: true
+      });
+      cloud = new THREE.Points(cloudGeo, cloudMat);
+      scene.add(cloud);
+
+      // Skeleton Structure
+      const lineMat = new THREE.LineBasicMaterial({ color: 0x00ff88, transparent: true, opacity: 0.4, blending: THREE.AdditiveBlending });
+      const lineGeo = new THREE.BufferGeometry();
+      lineGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(500 * 3), 3));
+      skeletonLines = new THREE.LineSegments(lineGeo, lineMat);
+      scene.add(skeletonLines);
+
+      // Neural Fibers (Kinetic patterns)
+      const fiberMat = new THREE.LineBasicMaterial({ color: 0x7cf7ff, transparent: true, opacity: 0.1, blending: THREE.AdditiveBlending });
+      const fiberGeo = new THREE.BufferGeometry();
+      fiberPos = new Float32Array(4000 * 3);
+      fiberGeo.setAttribute('position', new THREE.BufferAttribute(fiberPos, 3));
+      neuralFibers = new THREE.LineSegments(fiberGeo, fiberMat);
+      scene.add(neuralFibers);
+
+      // Bio Patterns (Green kinetic strands)
+      const patternMat = new THREE.LineBasicMaterial({ color: 0x00ff88, transparent: true, opacity: 0.25, blending: THREE.AdditiveBlending });
+      const patternGeo = new THREE.BufferGeometry();
+      patternPos = new Float32Array(PATTERN_COUNT * 3);
+      patternGeo.setAttribute('position', new THREE.BufferAttribute(patternPos, 3));
+      bioPatterns = new THREE.LineSegments(patternGeo, patternMat);
+      scene.add(bioPatterns);
+
+      // Specialized Highlights
+      highlights.leftEye = createHighlightMesh(0x00ff88);
+      highlights.rightEye = createHighlightMesh(0x00ff88);
+      highlights.nose = createHighlightMesh(0xff00ff);
+      highlights.leftEar = createHighlightMesh(0x7cf7ff);
+      highlights.rightEar = createHighlightMesh(0x7cf7ff);
+      highlights.heart = createHighlightMesh(0xff3333); 
+      highlights.abdomen = createHighlightMesh(0xffaa00);
+      highlights.leftElbow = createHighlightMesh(0x7cf7ff);
+      highlights.rightElbow = createHighlightMesh(0x7cf7ff);
+      highlights.leftKnee = createHighlightMesh(0x7cf7ff);
+      highlights.rightKnee = createHighlightMesh(0x7cf7ff);
+      highlights.leftIndex = createHighlightMesh(0x00ff88);
+      highlights.rightIndex = createHighlightMesh(0x00ff88);
+      highlights.leftThumb = createHighlightMesh(0xff00ff);
+      highlights.rightThumb = createHighlightMesh(0xff00ff);
+
+      Object.values(highlights).forEach(h => scene.add(h));
+
+      // Neural Noise (Background Patterns)
+      const noiseGeo = new THREE.BufferGeometry();
+      const noisePos = new Float32Array(NOISE_COUNT * 3);
+      const noiseCol = new Float32Array(NOISE_COUNT * 3);
+      for(let i=0; i<NOISE_COUNT; i++) {
+        noisePos[i*3] = (Math.random()-0.5)*40;
+        noisePos[i*3+1] = (Math.random()-0.5)*40;
+        noisePos[i*3+2] = (Math.random()-0.5)*20 - 10;
+        
+        noiseCol[i*3] = 0.5;
+        noiseCol[i*3+1] = 0.8;
+        noiseCol[i*3+2] = 1.0;
+      }
+      noiseGeo.setAttribute('position', new THREE.BufferAttribute(noisePos, 3));
+      noiseGeo.setAttribute('color', new THREE.BufferAttribute(noiseCol, 3));
+      
+      const noiseMat = new THREE.PointsMaterial({
+        size: 0.02,
+        vertexColors: true,
+        transparent: true,
+        opacity: 0.3,
+        blending: THREE.AdditiveBlending
+      });
+      neuralNoise = new THREE.Points(noiseGeo, noiseMat);
+      scene.add(neuralNoise);
+
+      window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+      });
+    }
+
+    function setupHolistic() {
+      holistic = new Holistic({
+        locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/holistic/${file}`
+      });
+
+      holistic.setOptions({
+        modelComplexity: 2, // Highest precision (Edge GPU/Pi quality)
+        smoothLandmarks: true,
+        minDetectionConfidence: 0.6,
+        minTrackingConfidence: 0.6
+      });
+
+      holistic.onResults(onHolisticResults);
+    }
+
+    function onHolisticResults(res) {
+      if (!isActive) return;
+
+      const cloudPos = cloud.geometry.attributes.position.array;
+      const linePos = skeletonLines.geometry.attributes.position.array;
+      const fiberPos = neuralFibers.geometry.attributes.position.array;
+      const patternPos = bioPatterns.geometry.attributes.position.array;
+      
+      let lineIdx = 0;
+      let fiberIdx = 0;
+      let patternIdx = 0;
+      let totalPts = 0;
+
+      // Reset lines
+      linePos.fill(0);
+      fiberPos.fill(0);
+      patternPos.fill(0);
+
+      // Utility to transform coordinates
+      const transform = (l, scaleX=4, scaleY=4, scaleZ=8) => ({
+        x: (l.x - 0.5) * -scaleX,
+        y: (l.y - 0.5) * -scaleY,
+        z: (l.z || 0) * -scaleZ
+      });
+
+      // Map Points & Connections
+      function processSet(landmarks, offset, connections=[], scaleX=4, scaleY=4, scaleZ=8) {
+        if (!landmarks) return;
+        
+        const time = performance.now() * 0.002;
+        
+        // Update Cloud Points with Volumetric Aura
+        for (let i = 0; i < landmarks.length; i++) {
+          const t = transform(landmarks[i], scaleX, scaleY, scaleZ);
+          const baseIdx = (offset + i) * AURA_PER_POINT;
+          
+          for (let a = 0; a < AURA_PER_POINT; a++) {
+            const idx = (baseIdx + a) * 3;
+            const smoothing = adaptationFactor * (1 - a/AURA_PER_POINT * 0.5);
+            
+            // Jitter for aura effect
+            const jitter = 0.05 * (a / AURA_PER_POINT);
+            const jx = Math.sin(time + a) * jitter;
+            const jy = Math.cos(time + a * 1.5) * jitter;
+            
+            cloudPos[idx] += (t.x + jx - cloudPos[idx]) * smoothing;
+            cloudPos[idx+1] += (t.y + jy - cloudPos[idx+1]) * smoothing;
+            cloudPos[idx+2] += (t.z - cloudPos[idx+2]) * smoothing;
+          }
+          totalPts++;
+
+          const coreIdx = baseIdx * 3;
+
+          // Add kinetic fibers
+          if (Math.random() > 0.7 && fiberIdx < 3990) {
+            const fIdx = fiberIdx * 3;
+            fiberPos[fIdx] = cloudPos[coreIdx];
+            fiberPos[fIdx+1] = cloudPos[coreIdx+1];
+            fiberPos[fIdx+2] = cloudPos[coreIdx+2];
+            fiberPos[fIdx+3] = cloudPos[coreIdx] + (Math.random()-0.5)*1.5;
+            fiberPos[fIdx+4] = cloudPos[coreIdx+1] + (Math.random()-0.5)*1.5;
+            fiberPos[fIdx+5] = cloudPos[coreIdx+2] + (Math.random()-0.5)*1.5;
+            fiberIdx += 2;
+          }
+
+          // Add hundreds of green Bio-Patterns
+          if (Math.random() > 0.6 && patternIdx < PATTERN_COUNT - 6) {
+            const pIdx = patternIdx * 3;
+            const r = 0.3;
+            patternPos[pIdx] = cloudPos[coreIdx];
+            patternPos[pIdx+1] = cloudPos[coreIdx+1];
+            patternPos[pIdx+2] = cloudPos[coreIdx+2];
+            patternPos[pIdx+3] = cloudPos[coreIdx] + Math.sin(time * 8 + i) * r;
+            patternPos[pIdx+4] = cloudPos[coreIdx+1] + Math.cos(time * 8 + i) * r;
+            patternPos[pIdx+5] = cloudPos[coreIdx+2] + Math.sin(time * 5 + i) * r;
+            patternIdx += 2;
+          }
+        }
+
+        // Update Skeleton Lines
+        connections.forEach(([i1, i2]) => {
+          if (landmarks[i1] && landmarks[i2]) {
+            const p1 = transform(landmarks[i1], scaleX, scaleY, scaleZ);
+            const p2 = transform(landmarks[i2], scaleX, scaleY, scaleZ);
+            const idx = lineIdx * 3;
+            linePos[idx] = p1.x; linePos[idx+1] = p1.y; linePos[idx+2] = p1.z;
+            linePos[idx+3] = p2.x; linePos[idx+4] = p2.y; linePos[idx+5] = p2.z;
+            lineIdx += 2;
+          }
+        });
+      }
+
+      processSet(res.faceLandmarks, 0);
+      processSet(res.poseLandmarks, 468, POSE_CONNECTIONS, 6, 6, 4);
+      processSet(res.leftHandLandmarks, 468 + 33, HAND_CONNECTIONS, 5, 5, 5);
+      processSet(res.rightHandLandmarks, 468 + 33 + 21, HAND_CONNECTIONS, 5, 5, 5);
+
+      // Handle UI & Highlights
+      if (totalPts > 0) {
+        mainStatus.innerText = "NEURAL LINK STABLE";
+        mainStatus.classList.add('animate-pulse');
+        document.getElementById('sync-status').innerText = "CONNECTED";
+        document.getElementById('id-val').innerText = "USER_RECOGNIZED";
+        ptsVal.innerText = `${totalPts} PTS`;
+        
+        // Update Mesh Density Bar
+        const densityPercent = (totalPts / PARTS_COUNT) * 100;
+        const meshBar = document.getElementById('mesh-density-bar');
+        if (meshBar) meshBar.style.width = `${Math.min(100, densityPercent)}%`;
+
+        // Update Emotion
+        const emotion = detectEmotion(res.faceLandmarks);
+        const config = EMOTION_MAP[emotion.type];
+        const emotionLabel = document.getElementById('emotion-val');
+        const emotionConfBar = document.getElementById('emotion-confidence');
+        
+        if (emotionLabel) {
+          emotionLabel.innerText = `${config.label}`;
+          emotionLabel.style.color = `#${config.color.toString(16).padStart(6, '0')}`;
+        }
+        if (emotionConfBar) {
+          emotionConfBar.style.width = `${emotion.confidence}%`;
+          emotionConfBar.style.backgroundColor = `#${config.color.toString(16).padStart(6, '0')}`;
+        }
+        if (cloud.material) {
+          cloud.material.color.setHex(config.color);
+        }
+
+        // Record history every second or on significant change
+        const now = Date.now();
+        if (!this.lastLog || now - this.lastLog > 2000) {
+          this.lastLog = now;
+          if (emotion.confidence > 50) {
+            emotionHistory.unshift({ ...emotion, time: new Date().toLocaleTimeString() });
+            if (emotionHistory.length > MAX_LOG) emotionHistory.pop();
+            
+            const logEl = document.getElementById('emotion-log');
+            if (logEl) {
+              logEl.innerHTML = emotionHistory.map(item => `
+                <div class="flex justify-between items-center bg-white/5 px-2 py-1.5 rounded border-l-2 border-brand-cyan animate-in fade-in slide-in-from-left-2 duration-500" style="border-color: #${EMOTION_MAP[item.type].color.toString(16).padStart(6, '0')}">
+                  <span class="text-[9px] font-mono text-white/80 uppercase tracking-wider">${EMOTION_MAP[item.type].label}</span>
+                  <span class="text-[8px] font-mono text-white/30">${item.confidence.toFixed(0)}%</span>
+                </div>
+              `).join('');
+            }
+            updateTrendGraph();
+          }
+        }
+
+        const updateHighlight = (obj, l, scaleX=4, scaleY=4, scaleZ=8) => {
+          if (!obj || !l) { if(obj) obj.visible=false; return; }
+          obj.visible = true;
+          const t = transform(l, scaleX, scaleY, scaleZ);
+          const smoothing = adaptationFactor;
+          obj.position.x += (t.x - obj.position.x) * smoothing;
+          obj.position.y += (t.y - obj.position.y) * smoothing;
+          obj.position.z += (t.z - obj.position.z) * smoothing;
+        };
+
+        if (res.faceLandmarks) {
+          const fl = res.faceLandmarks;
+          updateHighlight(highlights.leftEye, fl[159]);
+          updateHighlight(highlights.rightEye, fl[386]);
+          updateHighlight(highlights.nose, fl[4]);
+          updateHighlight(highlights.leftEar, fl[234]);
+          updateHighlight(highlights.rightEar, fl[454]);
+        }
+
+        if (res.poseLandmarks) {
+          const pl = res.poseLandmarks;
+          // Heart is midpoint between shoulders
+          const heartL = {
+            x: (pl[11].x + pl[12].x) / 2,
+            y: (pl[11].y + pl[12].y) / 2,
+            z: (pl[11].z + pl[12].z) / 2
+          };
+          updateHighlight(highlights.heart, heartL, 6, 6, 4);
+
+          // Abdomen is midpoint between hips
+          const abdomenL = {
+            x: (pl[23].x + pl[24].x) / 2,
+            y: (pl[23].y + pl[24].y) / 2,
+            z: (pl[23].z + pl[24].z) / 2
+          };
+          updateHighlight(highlights.abdomen, abdomenL, 6, 6, 4);
+
+          // Limbs
+          updateHighlight(highlights.leftElbow, pl[13], 6, 6, 4);
+          updateHighlight(highlights.rightElbow, pl[14], 6, 6, 4);
+          updateHighlight(highlights.leftKnee, pl[25], 6, 6, 4);
+          updateHighlight(highlights.rightKnee, pl[26], 6, 6, 4);
+        }
+
+        if (res.leftHandLandmarks) {
+          const lhl = res.leftHandLandmarks;
+          updateHighlight(highlights.leftIndex, lhl[8], 5, 5, 5);
+          updateHighlight(highlights.leftThumb, lhl[4], 5, 5, 5);
+        }
+
+        if (res.rightHandLandmarks) {
+          const rhl = res.rightHandLandmarks;
+          updateHighlight(highlights.rightIndex, rhl[8], 5, 5, 5);
+          updateHighlight(highlights.rightThumb, rhl[4], 5, 5, 5);
+        }
+
+      } else {
+        mainStatus.innerText = "SCANNING FOR BIOMETRICS";
+        mainStatus.classList.remove('animate-pulse');
+        document.getElementById('sync-status').innerText = "CALIBRATING";
+        Object.values(highlights).forEach(h => { if(h) h.visible = false; });
+      }
+
+      cloud.geometry.attributes.position.needsUpdate = true;
+      skeletonLines.geometry.attributes.position.needsUpdate = true;
+      neuralFibers.geometry.attributes.position.needsUpdate = true;
+      bioPatterns.geometry.attributes.position.needsUpdate = true;
+    }
+
+    function updateTrendGraph() {
+      const canvas = document.getElementById('emotion-trend');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      const w = canvas.width = canvas.clientWidth;
+      const h = canvas.height = canvas.clientHeight;
+      
+      ctx.clearRect(0, 0, w, h);
+      if (emotionHistory.length < 2) return;
+
+      ctx.beginPath();
+      ctx.setLineDash([2, 4]);
+      ctx.strokeStyle = 'rgba(124, 247, 255, 0.1)';
+      ctx.moveTo(0, h/2);
+      ctx.lineTo(w, h/2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      ctx.beginPath();
+      const step = w / (MAX_LOG - 1);
+      emotionHistory.slice().reverse().forEach((item, i) => {
+        const x = i * step;
+        const y = h - (EMOTION_MAP[item.type].val * h);
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+        
+        // Glow point
+        ctx.save();
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = `#${EMOTION_MAP[item.type].color.toString(16).padStart(6, '0')}`;
+        ctx.fillStyle = ctx.shadowColor;
+        ctx.beginPath();
+        ctx.arc(x, y, 3, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      });
+      
+      ctx.strokeStyle = '#7cf7ff';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+
+    async function start() {
+      try {
+        overlay.classList.add('opacity-0', 'pointer-events-none');
+        stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 }, audio: false });
+        video.srcObject = stream;
+        await video.play();
+
+        isActive = true;
+        startTime = Date.now();
+        btnStop.classList.remove('hidden');
+        document.getElementById('mini-preview').classList.remove('hidden');
+        document.getElementById('btn-start-inner').classList.add('pulse-subtle');
+
+        const processFrame = async () => {
+          if (!isActive) return;
+          if (video.readyState >= 2) {
+            previewCtx.drawImage(video, 0, 0, previewCanvas.width, previewCanvas.height);
+            await holistic.send({ image: video });
+          }
+          requestAnimationFrame(processFrame);
+        };
+        processFrame();
+      } catch (err) {
+        console.error(err);
+        alert("Camera initialization failed. Check permissions.");
+      }
+    }
+
+    function stop() {
+      isActive = false;
+      if (stream) stream.getTracks().forEach(t => t.stop());
+      overlay.classList.remove('opacity-0', 'pointer-events-none');
+      btnStop.classList.add('hidden');
+      document.getElementById('mini-preview').classList.add('hidden');
+      document.getElementById('btn-start-inner').classList.remove('pulse-subtle');
+      document.getElementById('emotion-val').innerText = "CALIBRATING...";
+      document.getElementById('emotion-confidence').style.width = "0%";
+      learningProgress = 0;
+      adaptationFactor = 0.3;
+      neuralWeights = { mouthWidthBase: 0.45, mouthHeightBase: 0.05, eyeOpenBase: 0.02, browDistBase: 0.08, samples: 0 };
+      document.getElementById('learn-val').innerText = "0.0%";
+      document.getElementById('learn-bar-ui').style.width = "0%";
+      const meshBar = document.getElementById('mesh-density-bar');
+      if (meshBar) meshBar.style.width = "0%";
+      const trendCanvas = document.getElementById('emotion-trend');
+      if (trendCanvas) {
+        const ctx = trendCanvas.getContext('2d');
+        ctx.clearRect(0, 0, trendCanvas.width, trendCanvas.height);
+      }
+      emotionHistory = [];
+      const logEl = document.getElementById('emotion-log');
+      if (logEl) logEl.innerHTML = '<div class="text-[9px] font-mono text-white/20 uppercase italic">Awaiting neural patterns...</div>';
+    }
+
+    function animate() {
+      requestAnimationFrame(animate);
+      const time = performance.now() * 0.001;
+      
+      neuralNoise.rotation.y += 0.0005;
+      neuralNoise.rotation.z += 0.0002;
+      
+      const noiseScale = 1 + Math.sin(time * 0.5) * 0.05;
+      neuralNoise.scale.set(noiseScale, noiseScale, noiseScale);
+
+      // Animate Highlights
+      Object.values(highlights).forEach(h => {
+        if (h && h.visible) {
+          const ring = h.children[1];
+          if (ring) {
+            ring.rotation.z += 0.05;
+            const pulse = 1 + Math.sin(time * 10) * 0.1;
+            ring.scale.set(pulse, pulse, pulse);
+          }
+        }
+      });
+
+      if (!isActive) {
+        const pos = cloud.geometry.attributes.position.array;
+        for(let i=0; i<TOTAL_PARTICLES; i++) {
+          pos[i*3] += Math.sin(time + i)*0.002;
+          pos[i*3+1] += Math.cos(time + i*0.8)*0.002;
+          pos[i*3+2] += Math.sin(time*0.5 + i*1.2)*0.002;
+        }
+        cloud.geometry.attributes.position.needsUpdate = true;
+        cloud.rotation.y += 0.005;
+
+        // Clear biometric overlays when inactive
+        if (fiberPos) fiberPos.fill(0);
+        if (patternPos) patternPos.fill(0);
+        neuralFibers.geometry.attributes.position.needsUpdate = true;
+        bioPatterns.geometry.attributes.position.needsUpdate = true;
+      } else {
+        cloud.rotation.y *= 0.9; // Stabilize rotation when active
+      }
+      
+      renderer.render(scene, camera);
+    }
+
+    function updateTelemetry() {
+      setInterval(() => {
+        if (!isActive) return;
+        
+        // Timer
+        const diff = Date.now() - startTime;
+        const s = Math.floor(diff/1000 % 60).toString().padStart(2, '0');
+        const m = Math.floor(diff/60000 % 60).toString().padStart(2, '0');
+        const h = Math.floor(diff/3600000).toString().padStart(2, '0');
+        document.getElementById('runtime').innerText = `${h}:${m}:${s}`;
+
+        // Learning Logic (Tied to Biometric Samples)
+        if (learningProgress < 100) {
+          const sampleGoal = 1000;
+          learningProgress = Math.min(100, (neuralWeights.samples / sampleGoal) * 100);
+          adaptationFactor = 0.3 + (learningProgress / 100) * 0.6;
+          
+          document.getElementById('learn-val').innerText = `${learningProgress.toFixed(1)}%`;
+          document.getElementById('learn-bar-ui').style.width = `${learningProgress}%`;
+          
+          if (learningProgress > 95) {
+            mainStatus.innerText = "NEURAL ECHO ESTABLISHED";
+            document.getElementById('sync-status').innerText = "OPTIMIZED";
+          } else if (learningProgress > 60) {
+            mainStatus.innerText = "COGNITIVE SYNC OPTIMIZING";
+          } else if (learningProgress > 30) {
+            mainStatus.innerText = "ADAPTING TO BIOMETRICS";
+          }
+        }
+      }, 1000);
+    }
+
+    btnStart.addEventListener('click', start);
+    btnStop.addEventListener('click', stop);
+    window.onload = init;
+  </script>
+</body>
+</html>
